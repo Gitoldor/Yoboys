@@ -1,6 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
   <meta charset="UTF-8">
 
   <meta
@@ -8,261 +11,203 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>Media Posts</title>
+  <meta
+    name="theme-color"
+    content="#0a0a0a"
+  >
 
+  <title>YoBoys</title>
+
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
+      margin: 0;
       background: #0a0a0a;
       color: white;
+      font-family: Arial, Helvetica, sans-serif;
     }
 
     .post-card {
       background: #151515;
-      border: 1px solid #262626;
+      border: 1px solid #272727;
+      transition: transform 0.2s ease;
     }
+
+    .post-card:hover {
+      transform: translateY(-2px);
+    }
+
+    .video-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: black;
+    }
+
+    .video-container iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+
+    .share-button,
+    .open-button {
+      transition: all 0.2s ease;
+    }
+
+    .share-button:active,
+    .open-button:active {
+      transform: scale(0.96);
+    }
+
+    .selected-post {
+      border-color: #555;
+    }
+
   </style>
+
 </head>
+
 
 <body>
 
-  <main class="max-w-2xl mx-auto p-4">
 
-    <h1 class="text-2xl font-bold mb-6">
-      Posts
-    </h1>
+  <!-- ==========================================
+       HEADER
+  =========================================== -->
 
-    <!-- Posts will appear here -->
-    <div id="postsContainer" class="space-y-4"></div>
+  <header
+    class="sticky top-0 z-50 border-b border-[#222] bg-[#0a0a0a]/90 backdrop-blur"
+  >
+
+    <div
+      class="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between"
+    >
+
+      <h1 class="text-xl font-bold">
+        YoBoys
+      </h1>
+
+      <button
+        id="homeButton"
+        class="text-sm text-gray-400 hover:text-white"
+      >
+        Home
+      </button>
+
+    </div>
+
+  </header>
+
+
+
+  <!-- ==========================================
+       MAIN
+  =========================================== -->
+
+  <main
+    class="max-w-2xl mx-auto px-4 py-6"
+  >
+
+    <div
+      id="selectedNotice"
+      class="hidden mb-5 rounded-xl border border-[#292929] bg-[#151515] px-4 py-3"
+    >
+
+      <div class="text-xs text-gray-500">
+        Shared post
+      </div>
+
+      <div
+        id="selectedTitle"
+        class="text-sm font-medium mt-1"
+      ></div>
+
+    </div>
+
+
+    <!-- POSTS -->
+    <div
+      id="postsContainer"
+      class="space-y-5"
+    ></div>
+
+
+    <!-- EMPTY STATE -->
+    <div
+      id="emptyState"
+      class="hidden text-center py-20 text-gray-500"
+    >
+      Post not found.
+    </div>
 
   </main>
 
 
-  <!-- Your data -->
+
+  <!-- ==========================================
+       TOAST
+  =========================================== -->
+
+  <div
+    id="toast"
+    class="fixed bottom-6 left-1/2 -translate-x-1/2
+           hidden z-[100]
+           bg-white text-black
+           px-5 py-3 rounded-full
+           text-sm font-medium
+           shadow-xl"
+  >
+    Link copied!
+  </div>
+
+
+
+  <!-- ==========================================
+       LOAD DATA
+  =========================================== -->
+
   <script src="data.js"></script>
+
 
 
   <script>
 
+
+    // ==========================================
+    // ELEMENTS
+    // ==========================================
+
     const postsContainer =
       document.getElementById("postsContainer");
 
+    const emptyState =
+      document.getElementById("emptyState");
 
-    // --------------------------------------------------
-    // GET YOUTUBE VIDEO ID
-    // --------------------------------------------------
+    const selectedNotice =
+      document.getElementById("selectedNotice");
 
-    function getYouTubeID(url) {
+    const selectedTitle =
+      document.getElementById("selectedTitle");
 
-      try {
+    const homeButton =
+      document.getElementById("homeButton");
 
-        const parsedURL = new URL(url);
+    const toast =
+      document.getElementById("toast");
 
-        // youtube.com/watch?v=XXXXXXXX
-        if (parsedURL.hostname.includes("youtube.com")) {
-          return parsedURL.searchParams.get("v");
-        }
 
-        // youtu.be/XXXXXXXX
-        if (parsedURL.hostname.includes("youtu.be")) {
-          return parsedURL.pathname.substring(1);
-        }
 
-      } catch (error) {
-
-        console.error("Invalid YouTube URL:", url);
-
-      }
-
-      return null;
-    }
-
-
-    // --------------------------------------------------
-    // CREATE UNIQUE SHARE LINK
-    // --------------------------------------------------
-
-    function getPostLink(post) {
-
-      const currentURL =
-        new URL(window.location.href);
-
-      // Remove any existing post parameter
-      currentURL.search = "";
-
-      // Add this post's unique ID
-      currentURL.searchParams.set("post", post.id);
-
-      return currentURL.toString();
-    }
-
-
-    // --------------------------------------------------
-    // SHARE POST
-    // --------------------------------------------------
-
-    async function sharePost(post) {
-
-      const postLink = getPostLink(post);
-
-      try {
-
-        // Native mobile share
-        if (navigator.share) {
-
-          await navigator.share({
-            title: post.title,
-            text: post.title,
-            url: postLink
-          });
-
-        } else {
-
-          // Fallback: copy link
-          await navigator.clipboard.writeText(postLink);
-
-          alert("Post link copied!");
-
-        }
-
-      } catch (error) {
-
-        // User cancelled native share
-        console.log("Share cancelled");
-
-      }
-
-    }
-
-
-    // --------------------------------------------------
-    // FIND POST FROM URL
-    // --------------------------------------------------
-
-    function getPostFromURL() {
-
-      const params =
-        new URLSearchParams(window.location.search);
-
-      const postID =
-        params.get("post");
-
-      if (!postID) {
-        return null;
-      }
-
-      return mediaData.find(
-        post => post.id === postID
-      );
-
-    }
-
-
-    // --------------------------------------------------
-    // CREATE POST CARD
-    // --------------------------------------------------
-
-    function createPost(post) {
-
-      const youtubeID =
-        getYouTubeID(post.url);
-
-      const card =
-        document.createElement("article");
-
-      card.className =
-        "post-card rounded-2xl overflow-hidden";
-
-
-      // YouTube embed
-      let videoHTML = "";
-
-      if (youtubeID) {
-
-        videoHTML = `
-          <div class="aspect-video bg-black">
-
-            <iframe
-              class="w-full h-full"
-              src="https://www.youtube.com/embed/${youtubeID}"
-              title="${escapeHTML(post.title)}"
-              frameborder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowfullscreen>
-            </iframe>
-
-          </div>
-        `;
-
-      }
-
-
-      card.innerHTML = `
-
-        ${videoHTML}
-
-        <div class="p-4">
-
-          <h2 class="text-lg font-semibold">
-            ${escapeHTML(post.title)}
-          </h2>
-
-          <p class="text-sm text-gray-400 mt-2">
-            📍 ${escapeHTML(post.location || "Unknown location")}
-          </p>
-
-          <div class="flex gap-2 mt-4">
-
-            <button
-              class="shareButton flex-1 bg-white text-black py-3 rounded-xl font-medium"
-            >
-              Share
-            </button>
-
-            <button
-              class="openButton px-5 py-3 rounded-xl bg-[#252525]"
-            >
-              Open
-            </button>
-
-          </div>
-
-        </div>
-      `;
-
-
-      // Share button
-      card
-        .querySelector(".shareButton")
-        .addEventListener("click", () => {
-
-          sharePost(post);
-
-        });
-
-
-      // Open unique URL
-      card
-        .querySelector(".openButton")
-        .addEventListener("click", () => {
-
-          const link =
-            getPostLink(post);
-
-          window.location.href = link;
-
-        });
-
-
-      return card;
-
-    }
-
-
-    // --------------------------------------------------
-    // SECURITY: ESCAPE HTML
-    // --------------------------------------------------
+    // ==========================================
+    // ESCAPE HTML
+    // ==========================================
 
     function escapeHTML(value) {
 
@@ -277,39 +222,680 @@
     }
 
 
-    // --------------------------------------------------
-    // RENDER POSTS
-    // --------------------------------------------------
+
+    // ==========================================
+    // GET YOUTUBE VIDEO ID
+    // ==========================================
+
+    function getYouTubeID(url) {
+
+      if (!url) {
+        return null;
+      }
+
+      try {
+
+        const parsedURL =
+          new URL(url);
+
+        // youtube.com/watch?v=VIDEO_ID
+
+        if (
+          parsedURL.hostname.includes("youtube.com")
+        ) {
+
+          return parsedURL.searchParams.get("v");
+
+        }
+
+
+        // youtu.be/VIDEO_ID
+
+        if (
+          parsedURL.hostname.includes("youtu.be")
+        ) {
+
+          return parsedURL.pathname
+            .replace("/", "")
+            .split("?")[0];
+
+        }
+
+
+        // youtube.com/shorts/VIDEO_ID
+
+        if (
+          parsedURL.pathname.startsWith("/shorts/")
+        ) {
+
+          return parsedURL.pathname
+            .split("/shorts/")[1]
+            .split("/")[0];
+
+        }
+
+      }
+
+      catch (error) {
+
+        console.error(
+          "Invalid YouTube URL:",
+          url
+        );
+
+      }
+
+      return null;
+
+    }
+
+
+
+    // ==========================================
+    // GET UNIQUE POST LINK
+    // ==========================================
+
+    function getPostLink(post) {
+
+      /*
+        Example:
+
+        https://gitoldor.github.io/Yoboys/?post=v2
+      */
+
+      const currentURL =
+        new URL(window.location.href);
+
+
+      // Remove existing query parameters
+
+      currentURL.search = "";
+
+
+      // Add post ID
+
+      currentURL.searchParams.set(
+        "post",
+        post.id
+      );
+
+
+      return currentURL.toString();
+
+    }
+
+
+
+    // ==========================================
+    // GET POST ID FROM URL
+    // ==========================================
+
+    function getPostIDFromURL() {
+
+      const params =
+        new URLSearchParams(
+          window.location.search
+        );
+
+      return params.get("post");
+
+    }
+
+
+
+    // ==========================================
+    // GET POST FROM URL
+    // ==========================================
+
+    function getPostFromURL() {
+
+      const postID =
+        getPostIDFromURL();
+
+      if (!postID) {
+        return null;
+      }
+
+
+      return mediaData.find(
+        post => post.id === postID
+      ) || null;
+
+    }
+
+
+
+    // ==========================================
+    // SHOW TOAST
+    // ==========================================
+
+    function showToast(message) {
+
+      toast.textContent =
+        message;
+
+      toast.classList.remove("hidden");
+
+
+      clearTimeout(
+        window.toastTimer
+      );
+
+
+      window.toastTimer =
+        setTimeout(() => {
+
+          toast.classList.add("hidden");
+
+        }, 2000);
+
+    }
+
+
+
+    // ==========================================
+    // SHARE POST
+    // ==========================================
+
+    async function sharePost(post) {
+
+      const postLink =
+        getPostLink(post);
+
+
+      // ------------------------------------------
+      // NATIVE SHARE
+      // ------------------------------------------
+
+      if (
+        navigator.share
+      ) {
+
+        try {
+
+          await navigator.share({
+
+            title: post.title,
+
+            text: post.title,
+
+            url: postLink
+
+          });
+
+          return;
+
+        }
+
+        catch (error) {
+
+          /*
+            User may have cancelled
+            the share sheet.
+          */
+
+          console.log(
+            "Share cancelled"
+          );
+
+        }
+
+      }
+
+
+      // ------------------------------------------
+      // CLIPBOARD FALLBACK
+      // ------------------------------------------
+
+      try {
+
+        await navigator.clipboard.writeText(
+          postLink
+        );
+
+        showToast(
+          "Post link copied!"
+        );
+
+      }
+
+      catch (error) {
+
+        // Older browsers
+
+        const temporaryInput =
+          document.createElement("input");
+
+        temporaryInput.value =
+          postLink;
+
+        document.body.appendChild(
+          temporaryInput
+        );
+
+        temporaryInput.select();
+
+        document.execCommand(
+          "copy"
+        );
+
+        temporaryInput.remove();
+
+        showToast(
+          "Post link copied!"
+        );
+
+      }
+
+    }
+
+
+
+    // ==========================================
+    // OPEN POST URL
+    // ==========================================
+
+    function openPost(post) {
+
+      const link =
+        getPostLink(post);
+
+      window.location.href =
+        link;
+
+    }
+
+
+
+    // ==========================================
+    // CREATE POST CARD
+    // ==========================================
+
+    function createPost(
+      post,
+      isSelected = false
+    ) {
+
+      const card =
+        document.createElement("article");
+
+
+      card.className =
+        "post-card rounded-2xl overflow-hidden";
+
+
+      if (isSelected) {
+
+        card.classList.add(
+          "selected-post"
+        );
+
+      }
+
+
+      // ------------------------------------------
+      // YOUTUBE
+      // ------------------------------------------
+
+      const youtubeID =
+        getYouTubeID(post.url);
+
+
+      let mediaHTML = "";
+
+
+      if (youtubeID) {
+
+        mediaHTML = `
+
+          <div class="video-container">
+
+            <iframe
+
+              src="https://www.youtube.com/embed/${youtubeID}"
+
+              title="${escapeHTML(post.title)}"
+
+              loading="lazy"
+
+              allow="
+                accelerometer;
+                autoplay;
+                clipboard-write;
+                encrypted-media;
+                gyroscope;
+                picture-in-picture;
+                web-share
+              "
+
+              allowfullscreen>
+
+            </iframe>
+
+          </div>
+
+        `;
+
+      }
+
+
+      // ------------------------------------------
+      // CARD CONTENT
+      // ------------------------------------------
+
+      card.innerHTML = `
+
+        ${mediaHTML}
+
+
+        <div class="p-4">
+
+
+          <!-- TITLE -->
+
+          <h2
+            class="text-lg font-semibold leading-snug"
+          >
+
+            ${escapeHTML(post.title)}
+
+          </h2>
+
+
+          <!-- LOCATION -->
+
+          ${
+            post.location
+              ? `
+                <div
+                  class="flex items-center gap-2
+                         mt-2
+                         text-sm
+                         text-gray-400"
+                >
+
+                  <span>📍</span>
+
+                  <span>
+                    ${escapeHTML(post.location)}
+                  </span>
+
+                </div>
+              `
+              : ""
+          }
+
+
+          <!-- ID -->
+
+          <div
+            class="text-xs text-gray-600 mt-2"
+          >
+
+            Post ID: ${escapeHTML(post.id)}
+
+          </div>
+
+
+          <!-- BUTTONS -->
+
+          <div
+            class="flex gap-2 mt-4"
+          >
+
+
+            <button
+
+              class="
+                share-button
+                flex-1
+                py-3
+                rounded-xl
+                bg-white
+                text-black
+                font-medium
+              "
+
+              type="button"
+            >
+
+              Share
+
+            </button>
+
+
+            <button
+
+              class="
+                open-button
+                px-5
+                py-3
+                rounded-xl
+                bg-[#252525]
+                text-white
+                font-medium
+              "
+
+              type="button"
+            >
+
+              Open
+
+            </button>
+
+
+          </div>
+
+
+        </div>
+
+      `;
+
+
+      // ------------------------------------------
+      // SHARE BUTTON
+      // ------------------------------------------
+
+      const shareButton =
+        card.querySelector(
+          ".share-button"
+        );
+
+
+      shareButton.addEventListener(
+        "click",
+        () => {
+
+          sharePost(post);
+
+        }
+      );
+
+
+
+      // ------------------------------------------
+      // OPEN BUTTON
+      // ------------------------------------------
+
+      const openButton =
+        card.querySelector(
+          ".open-button"
+        );
+
+
+      openButton.addEventListener(
+        "click",
+        () => {
+
+          openPost(post);
+
+        }
+      );
+
+
+      return card;
+
+    }
+
+
+
+    // ==========================================
+    // RENDER FEED
+    // ==========================================
 
     function renderPosts() {
 
       postsContainer.innerHTML = "";
 
+      emptyState.classList.add(
+        "hidden"
+      );
+
+      selectedNotice.classList.add(
+        "hidden"
+      );
+
+
       const selectedPost =
         getPostFromURL();
 
 
-      // ----------------------------------------------
-      // UNIQUE POST URL
-      // ----------------------------------------------
+
+      // ========================================
+      // SHARED POST URL
+      // ========================================
 
       if (selectedPost) {
 
+
+        // --------------------------------------
+        // SHOW SHARED POST FIRST
+        // --------------------------------------
+
+        const selectedCard =
+          createPost(
+            selectedPost,
+            true
+          );
+
+
         postsContainer.appendChild(
-          createPost(selectedPost)
+          selectedCard
         );
+
+
+        // --------------------------------------
+        // NOTICE
+        // --------------------------------------
+
+        selectedTitle.textContent =
+          selectedPost.title;
+
+        selectedNotice.classList.remove(
+          "hidden"
+        );
+
+
+        // --------------------------------------
+        // "MORE POSTS"
+        // --------------------------------------
+
+        const divider =
+          document.createElement("div");
+
+
+        divider.className =
+          "py-4 text-center";
+
+
+        divider.innerHTML = `
+
+          <div
+            class="inline-flex
+                   items-center
+                   gap-3
+                   text-xs
+                   text-gray-500"
+          >
+
+            <span
+              class="w-12 h-px bg-[#292929]"
+            ></span>
+
+            <span>
+              MORE POSTS
+            </span>
+
+            <span
+              class="w-12 h-px bg-[#292929]"
+            ></span>
+
+          </div>
+
+        `;
+
+
+        postsContainer.appendChild(
+          divider
+        );
+
+
+
+        // --------------------------------------
+        // ALL OTHER POSTS
+        // --------------------------------------
+
+        mediaData.forEach(post => {
+
+
+          // Don't duplicate
+          // the selected post
+
+          if (
+            post.id === selectedPost.id
+          ) {
+
+            return;
+
+          }
+
+
+          postsContainer.appendChild(
+            createPost(post)
+          );
+
+        });
+
+
+        // Page title
 
         document.title =
           selectedPost.title;
+
 
         return;
 
       }
 
 
-      // ----------------------------------------------
-      // NORMAL HOME PAGE
-      // ----------------------------------------------
+
+      // ========================================
+      // NORMAL HOME FEED
+      // ========================================
+
+      if (
+        !mediaData ||
+        mediaData.length === 0
+      ) {
+
+        emptyState.classList.remove(
+          "hidden"
+        );
+
+        return;
+
+      }
+
 
       mediaData.forEach(post => {
 
@@ -319,13 +905,47 @@
 
       });
 
+
+      document.title =
+        "YoBoys";
+
     }
 
 
-    // Start
+
+    // ==========================================
+    // HOME BUTTON
+    // ==========================================
+
+    homeButton.addEventListener(
+      "click",
+      () => {
+
+        /*
+          Remove ?post=v2
+          and go back to normal feed.
+        */
+
+        const homeURL =
+          window.location.pathname;
+
+        window.location.href =
+          homeURL;
+
+      }
+    );
+
+
+
+    // ==========================================
+    // START
+    // ==========================================
+
     renderPosts();
+
 
   </script>
 
 </body>
+
 </html>
